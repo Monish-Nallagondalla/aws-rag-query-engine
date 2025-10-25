@@ -4,7 +4,7 @@ import shutil
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
-from langchain.vectorstores.chroma import Chroma
+from langchain_community.vectorstores import Chroma
 
 from src.rag_app.get_embeddings import get_embedding_function
 
@@ -20,7 +20,7 @@ def main():
     parser.add_argument("--reset", action="store_true", help="Reset the database.")
     args = parser.parse_args()
     if args.reset:
-        print("✨ Clearing Database")
+        print("Clearing Database")
         clear_database()
 
     # Create (or update) the data store.
@@ -53,7 +53,11 @@ def add_to_chroma(chunks: list[Document]):
     # Calculate Page IDs.
     chunks_with_ids = calculate_chunk_ids(chunks)
     for chunk in chunks:
-        print(f"Chunk Page Sample: {chunk.metadata['id']}\n{chunk.page_content}\n\n")
+        try:
+            print(f"Chunk Page Sample: {chunk.metadata['id']}\n{chunk.page_content}\n\n")
+        except UnicodeEncodeError:
+            # Handle unicode characters that can't be displayed in console
+            print(f"Chunk Page Sample: {chunk.metadata['id']}\n[Content contains special characters]\n\n")
 
     # Add or Update the documents.
     existing_items = db.get(include=[])  # IDs are always included by default
@@ -67,11 +71,11 @@ def add_to_chroma(chunks: list[Document]):
             new_chunks.append(chunk)
 
     if len(new_chunks):
-        print(f"👉 Adding new documents: {len(new_chunks)}")
+        print(f"Adding new documents: {len(new_chunks)}")
         new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
         db.add_documents(new_chunks, ids=new_chunk_ids)
     else:
-        print("✅ No new documents to add")
+        print("No new documents to add")
 
 
 def calculate_chunk_ids(chunks):
